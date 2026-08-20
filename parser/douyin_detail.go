@@ -113,7 +113,12 @@ func (f douyinWebDetailFetcher) fetch(videoID string) (gjson.Result, error) {
 		)
 	}
 	if awemeID := data.Get("aweme_id").String(); awemeID != videoID {
-		return gjson.Result{}, fmt.Errorf("native douyin detail returned unexpected aweme id %q", awemeID)
+		return gjson.Result{}, fmt.Errorf(
+			"native douyin detail returned unexpected aweme id %q (status_code=%s, status_msg=%q)",
+			awemeID,
+			gjson.GetBytes(response.Body(), "status_code").String(),
+			strings.TrimSpace(gjson.GetBytes(response.Body(), "status_msg").String()),
+		)
 	}
 
 	return data, nil

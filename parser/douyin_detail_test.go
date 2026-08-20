@@ -135,6 +135,29 @@ func TestDouyinWebDetailFetcherFetchesOfficialDetail(t *testing.T) {
 	}
 }
 
+func TestDouyinWebDetailFetcherReportsOfficialErrorStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"status_code":4,"status_msg":"detail unavailable","aweme_detail":{}}`))
+	}))
+	defer server.Close()
+
+	fetcher := newDouyinWebDetailFetcher(resty.New(), "sessionid=deployment-owned-cookie")
+	fetcher.endpoint = server.URL
+	fetcher.now = func() time.Time { return time.UnixMilli(1720000000123) }
+	fetcher.random = func() int { return 1234 }
+
+	_, err := fetcher.fetch("7450123456789012345")
+	if err == nil {
+		t.Fatal("fetch() error = nil, want official detail status error")
+	}
+	for _, want := range []string{`aweme id ""`, "status_code=4", `status_msg="detail unavailable"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("fetch() error = %q, want substring %q", err, want)
+		}
+	}
+}
+
 func TestDouyinWebDetailFetcherRequiresDeploymentCookie(t *testing.T) {
 	called := false
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
